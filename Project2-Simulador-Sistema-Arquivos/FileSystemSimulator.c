@@ -29,7 +29,7 @@ void showMenu(){
 	printf(BOLD "Remove a directory\n");
 
 	printf(BOLD MAGENTA "removea   ->   ") ;
-	printf(BOLD "Remove a directory\n");
+	printf(BOLD "Remove a file\n");
 
 
 	printf(BOLD GREEN "verd      ->   ") ;
@@ -102,60 +102,125 @@ void init_disk() {
 }
 
 void create_directory(char *path) {
-    Entry *parent = &root_directory;
+	Entry *parent = &root_directory;
 
-    char *paths_dir[MAX_SIZE];
-    int num_dir = 0;
-    if(strncmp(path,"root",4)==0)
-		num_dir = 0;
-	else
-		num_dir = 1;
+	char *paths_dir[MAX_SIZE];
+	int num_dir = 0;
 
 	paths_dir[num_dir] = strtok(path, "\\");
 	while(paths_dir[num_dir] != NULL) {
 		paths_dir[++num_dir] = strtok(NULL, "\\");
 	}
-	strcpy(paths_dir[1],"root"); 
-	strcpy(paths_dir[0],"root");
-    for (int i = 2; i < num_dir; i++) {
-        Entry *child = NULL;
-        for (int j = 0; j < parent->quant_childs; j++) {
-            if (strcmp(paths_dir[i], parent->subdirectories[j]->name) == 0) {
-                child = parent->subdirectories[j];
-                break;
-            }
-        }
-        if (child == NULL) {
-            printf(BOLD RED "Erro: O diretório pai especificado não existe.\n" RESET);
-            return; // Retorna sem criar o diretório
-        }
-        parent = child; // Atualiza o pai para o próximo diretório
-    }
+	
+	for (int i = 2; i < num_dir; i++) {
+		Entry *child = NULL;
+		for (int j = 0; j < parent->quant_childs; j++) {
+			if (strcmp(paths_dir[i-1], parent->subdirectories[j]->name) == 0) {
+				child = parent->subdirectories[j];
+				break;
+			}
+		}
+		if (child == NULL ) {
+			printf(BOLD RED "Erro: O diretório pai especificado não existe.\n" RESET);
+			return; // Retorna sem criar o diretório
+		}
+		parent = child; // Atualiza o pai para o próximo diretório
+	}
 
-    // Verifica se o diretório a ser criado já existe dentro do diretório pai
-    for (int j = 0; j < parent->quant_childs; j++) {
-        if (strcmp(paths_dir[num_dir - 1], parent->subdirectories[j]->name) == 0) {
-            printf(BOLD RED "Erro: O diretório a ser criado já existe no diretório pai.\n" RESET);
-            return; // Retorna sem criar o diretório
-        }
-    }
+	// Verifica se o diretório a ser criado já existe dentro do diretório pai
+	for (int j = 0; j < parent->quant_childs; j++) {
+		if (strcmp(paths_dir[num_dir - 1], parent->subdirectories[j]->name) == 0) {
+			printf(BOLD RED "Erro: O diretório a ser criado já existe no diretório pai.\n" RESET);
+			return; // Retorna sem criar o diretório
+		}
+	}
 
-    // Se chegou até aqui, o diretório pai existe e o diretório a ser criado não existe dentro dele
-    // Podemos criar o diretório filho
-    Entry *new_directory = (Entry *)malloc(sizeof(Entry));
-    strcpy(new_directory->name, paths_dir[num_dir - 1]); // Último elemento do caminho
-    new_directory->start_sector = 0; // Defina o setor inicial adequadamente
-    new_directory->size = 0; // Defina o tamanho inicial adequadamente
-    new_directory->is_directory = 1;
-    new_directory->quant_childs = 0;
-    for (int k = 0; k < NUM_SECTORS; k++) {
-        new_directory->subdirectories[k] = NULL;
-    }
+	// Se chegou até aqui, o diretório pai existe e o diretório a ser criado não existe dentro dele
+	// Podemos criar o diretório filho
+	Entry *new_directory = (Entry *)malloc(sizeof(Entry));
+	strcpy(new_directory->name, paths_dir[num_dir-1]); // Último elemento do caminho
+	new_directory->start_sector = 0; // Defina o setor inicial adequadamente
+	new_directory->size = 1; // Defina o tamanho inicial adequadamente
+	new_directory->is_directory = 1;
+	new_directory->quant_childs = 0;
+	for (int k = 0; k < NUM_SECTORS; k++) {
+		new_directory->subdirectories[k] = NULL;
+	}
 
-    // Adiciona o novo diretório à lista de subdiretórios do pai
-    parent->subdirectories[parent->quant_childs++] = new_directory;
+	// Adiciona o novo diretório à lista de subdiretórios do pai
+	parent->subdirectories[parent->quant_childs++] = new_directory;
 
-    printf(BOLD GREEN "Diretório criado com sucesso.\n" RESET);
+	for(int i = 10; i < NUM_SECTORS; i++){
+		if(bitmap[i] == 0){
+			bitmap[i] = 1;
+			new_directory->start_sector = i;
+			break;
+		}
+	}
+	if(new_directory->start_sector == 0){
+		printf(BOLD RED "Erro: Sem espaço em disco para criar diretorio.\n" RESET);
+	}
+	printf(BOLD GREEN "Diretório criado com sucesso.\n" RESET);
+}
+
+int remove_directory(char *path) {
+	Entry *parent = &root_directory;
+	char *path_sub = malloc(MAX_SIZE * sizeof(char));;
+	strcpy(path_sub,path);
+	strcat(path_sub,"\\");
+	char *paths_dir[MAX_SIZE];
+	int num_dir = 0;
+
+	paths_dir[num_dir] = strtok(path, "\\");
+	while(paths_dir[num_dir] != NULL) {
+		paths_dir[++num_dir] = strtok(NULL, "\\");
+	}
+	Entry *child = NULL;
+	fflush(stdout);
+	for (int i = 2; i < num_dir; i++) {
+		child = NULL;
+		for (int j = 0; j < parent->quant_childs; j++) {
+			if (strcmp(paths_dir[i-1], parent->subdirectories[j]->name) == 0) {
+				child = parent->subdirectories[j];
+				break;
+			}
+		}
+		if (child == NULL ) {
+			printf(BOLD RED "Erro: O diretório pai especificado não existe.\n" RESET);
+			return 1; // Retorna sem deletar o diretório
+		}
+		parent = child; // Atualiza o pai para o próximo diretório
+	}
+
+	// Verifica se o diretório a ser deletado existe dentro do diretório pai
+	char *aux = malloc(MAX_SIZE * sizeof(char)); //variavel para concatenar com o pathsub sem altera-lo
+	for (int j = 0; j < parent->quant_childs; j++) {
+
+		if (strcmp(paths_dir[num_dir - 1], parent->subdirectories[j]->name) == 0) {
+			child = parent->subdirectories[j];
+
+			for(int i = 0; i< child->quant_childs; i++){
+				fprintf(stderr,"%s",path_sub);
+				strcpy(aux, path_sub);
+
+				strcat(aux,child->subdirectories[i]->name);
+
+				//remove_directory(aux);
+			}
+		
+			parent->subdirectories[j] = parent->subdirectories[parent->quant_childs];
+			parent->quant_childs--;
+			free(aux);
+			free(path_sub);
+			return 0;
+		}
+	}
+        free(aux);
+	free(path_sub);
+	printf(BOLD RED "Erro: O diretório a ser deletado não existe no diretório pai.\n" RESET);
+	return 1; // Retorna sem deletar o diretório
+
+
 }
 
 int main(int argc, char **argv) {
@@ -164,7 +229,6 @@ int main(int argc, char **argv) {
 	char input[MAX_SIZE];
 
 	while(1){
-
 		// Recebe a entrada do teclado
 		//printf(BOLD CYAN "----------------\n" RESET);
 		printf(BOLD CYAN "↪ " RESET);
@@ -188,7 +252,12 @@ int main(int argc, char **argv) {
 		}else if (strcmp(args[0], "criaa") == 0){
 			printf(BOLD "Making file...\n" RESET);
 		}else if (strcmp(args[0], "removed") == 0){
-			printf(BOLD "Removing directory...\n" RESET);
+
+			if(args[1] != NULL){
+				if(remove_directory(args[1]) == 0){
+					printf(BOLD GREEN "Diretório deletado com sucesso.\n" RESET);
+				}
+			}
 		}else if (strcmp(args[0], "removea") == 0){
 			printf(BOLD "Removing file...\n" RESET);
 		}else if (strcmp(args[0], "exit") == 0){
