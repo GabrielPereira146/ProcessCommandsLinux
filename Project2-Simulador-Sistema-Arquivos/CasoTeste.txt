@@ -1,0 +1,17 @@
+criad \batata
+criad \mandioca
+criad \batata\banana
+criad \beterraba
+criad \mandioca\uva
+criad \mandioca\coco
+criad \mandioca\coco\mamao
+removed batata
+criaa \mandioca\uva\saladinha.txt 30
+criaa \batata\frita.txt 15
+criad batata
+criaa batata\frita.txt 15
+criad \mandioca\uva\tempero
+criaa \mandioca\uva\tempero\limao.txt 500
+arvore
+verd root
+verd root\mandioca
